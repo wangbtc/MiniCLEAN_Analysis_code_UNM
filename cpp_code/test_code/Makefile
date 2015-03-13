@@ -83,6 +83,8 @@ endif
 $(EXECUTABLE): $(OBJECTS)
 	$(CPP) $(OBJECTS) -o $@ $< -L./  $(LIBS)
 
+
+
 .cc.o:
 		$(CPP) $(OBJECTS)  $< -o $@
 
@@ -99,19 +101,28 @@ $(EXECUTABLE): $(OBJECTS)
 	@echo "Generating dictionary $@..."
 	@rootcint -f $@ -c $(CINTCFLAGS)  $^
 
-plot_waveform_mod.o:	plot_waveform_mod.cc functions.hh
-	$(CXX) $(CXXFLAGS) -c $<
+#plot_waveform_mod.o:	plot_waveform_mod.cc functions.hh
+#	$(CXX) $(CXXFLAGS) -c $<
 
-read_waveform.o: read_waveform.cc functions.hh
-	$(CXX) $(CXXFLAGS) -c $<
+#read_waveform.o: read_waveform.cc functions.hh
+#	$(CXX) $(CXXFLAGS) -c $<
 
-create_hist.o: create_hist.cc functions.hh
-	$(CXX) $(CXXFLAGS) -c $<
+#create_hist.o: create_hist.cc functions.hh
+#	$(CXX) $(CXXFLAGS) -c $<
 
-pulse_info.o: pulse_info.cc functions.hh
-		$(CXX) $(CXXFLAGS) -c $<
+#pulse_info.o: pulse_info.cc functions.hh
+#	$(CXX) $(CXXFLAGS) -c $<
 
-%.o: %.cc %.hh
+#alpha_cut.o: alpha_cut.cc functions.hh
+#	$(CXX) $(CXXFLAGS) -c $<
+
+#alpha_cut_results.o: alpha_cut_results.cc functions.hh
+#	$(CXX) $(CXXFLAGS) -c $<
+
+#SaveFile.o: SaveFile.cc functions.hh
+#	$(CXX) $(CXXFLAGS) -c $<
+
+%.o: %.cc functions.hh
 	$(CXX) $(CXXFLAGS) -c $<
 
 .PHONY : clean show
@@ -137,4 +148,4 @@ show:
 	@echo CPP=$(CPP)
 
 clean:
-	@rm -f $(OBJS) *_dict.o* $(LIBRARY) $(LIBLINK) anavac
+	@rm -f $(OBJS) *_dict.o* $(LIBRARY) $(LIBLINK) anavac *.o

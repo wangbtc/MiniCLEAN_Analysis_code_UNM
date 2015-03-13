@@ -30,9 +30,9 @@
 #include <RAT/DetectorConfig.hh>
 #include <RAT/DS/Root.hh>
 #include "functions.hh"
-
 vector<TH1D*> hwavesum;
 TH1D* waveform;
+TH1D* projection_x;
 
 /*
 usage : ./ana run_type run subrun special_events
@@ -107,6 +107,8 @@ int main(int argc, char *arg[]){
   TH2D* pulseTime_q_41 = Create2DHist("Pulse_time Q for PMT 41"," Time (ns) ","Charge (PE)",tbins,tmin,tmax,1000,0,200);
   TH1D* pmt_count = Create1DHist("pmt_count"," PMT Channel "," Nomalized Count ",92,0,92,1);
   TH1D* time_h = Create1DHist("Time difference between two consecutive events"," dt (10 ms) "," counts ",2000,-10,1990,1);
+
+  projection_x = Create1DHist("Projection from 2D Hist","Fprompt","counts",100,0,1,1);
   //
   int total_count = 0;
   double zeroBin ;
@@ -343,6 +345,9 @@ int main(int argc, char *arg[]){
   for (int ibin=1;ibin<=pmt_count->GetNbinsX();++ibin){
     pmt_count->SetBinContent(ibin,pmt_count->GetBinContent(ibin)/float(pmt_count->GetEntries()));
   }
+  projection_x = alpha_cut_results(fp_q);
+  TCanvas *c = alpha_cut(fp_q);
+
 
   TString outfilename = dirname + rootfilename;
   TFile *f = new TFile(outfilename,"RECREATE");
@@ -380,6 +385,9 @@ int main(int argc, char *arg[]){
 
     pmt_count->Write();
     time_h->Write();
+
+    c->Write();
+    projection_x->Write();
   }
   else{
     NormalizedSum(waveform);
@@ -401,6 +409,6 @@ int main(int argc, char *arg[]){
 
 
   f->Close();
-
+  
   return 0;
 }

@@ -14,7 +14,7 @@
 using namespace RAT::DS;
 using namespace std;
 
-TCanvas* alpha_cut(TH2D* fpq){
+TH1D* alpha_cut_results(TH2D* fpq){
 
     TCutG *cut = new TCutG("cut",6);
     //defined the area of the Cut
@@ -32,10 +32,8 @@ TCanvas* alpha_cut(TH2D* fpq){
 
     TH1D* px = fpq->ProjectionX("px",1,2000,"[cut]");
 
-    TCanvas *c1 = new TCanvas("c1","c1");
-    fpq->Draw("colz");
-    cut->Draw("l");
 
-    return c1;
+
+    return px;
 
 }

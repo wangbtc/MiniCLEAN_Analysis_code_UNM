@@ -10,7 +10,7 @@
 #include <TH2F.h>
 #include <TCut.h>
 #include <TCutG.h>
-#include "functions.hh"
+#include "alpha_cut.hh"
 using namespace RAT::DS;
 using namespace std;
 
@@ -31,6 +31,7 @@ TCanvas* alpha_cut(TH2D* fpq){
     //
 
     TH1D* px = fpq->ProjectionX("px",1,2000,"[cut]");
+    //projection_x = fpq->ProjectionX("px",1,2000,"[cut]");
 
     TCanvas *c1 = new TCanvas("c1","c1");
     fpq->Draw("colz");

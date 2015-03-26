@@ -29,7 +29,7 @@
 #include <RAT/DS/Pulse.hh>
 #include <RAT/DetectorConfig.hh>
 #include <RAT/DS/Root.hh>
-#include <functions.hh>
+#include <read_waveform.hh>
 using namespace RAT::DS;
 
 void read_waveform(PMT* pmt,double trig,double sampletime,TH1D* hwave){

@@ -5,7 +5,7 @@ ARCH          = $(shell root-config --arch)
 ifeq ($(ARCH),macosx)
  include $(ROOTSYS)/test/Makefile.arch
 else
-CXX           = g++        					 # Which compiler should be used
+CXX           = g++    					 # Which compiler should be used
 CXXFLAGS      = -ggdb -O -Wall -fPIC # What flags should pass to compiler
 LD            = clang++
 LDFLAGS       = -O									 # What flags should pass to the linker
@@ -29,7 +29,8 @@ ifeq ($(ARCH),macosx64)
                 -DG__REGEXP -DG__UNIX -DG__SHAREDLIB \
                 -DG__ROOT -DG__REDIRECTIO -DG__OSFDLL \
                 -DG__STD_EXCEPTION
-	G4LIB = $(G4INSTALL)/lib
+	#G4LIB = $(G4INSTALL)/lib # works on Linux g++
+	G4LIB = /usr/lib # for my MAC laptop
 else
 	CINTCFLAGS = $(ROOTFLAGS)
 	G4LIB = $(G4INSTALL)/lib64
@@ -47,9 +48,11 @@ CPP= $(CXX) $(CXXFLAGS)
 #------------------------------------------------------------------------------
 SKIP_OBJ =
 SKIP_DICT =
-SOURCE := $(wildcard *.hh) $(wildcard *.cc)
+#SOURCE := $(wildcard *.hh) $(wildcard *.cc) # works on Linux g++
+SOURCE := $(wildcard *.cc) # for working with clang
 HEADERS := $(wildcard *.hh)
 OBJS := $(filter-out $(SKIP_OBJ),$(patsubst %.hh,%.o,$(wildcard *.hh)))
+#OBJS :=$(wildcard *.o)
 DICTS := $(filter-out $(SKIP_DICT), $(patsubst %.hh,%_dict.o,$(wildcard *.hh)))
 EXECUTABLE=ana
 #defined the name of executable file
@@ -68,6 +71,9 @@ endif
 
 all: $(SOURCES) $(EXECUTABLE)
 
+#all: $(EXECUTABLE)
+
+
 copy: $(HEADERS)
 	cp *.hh  $(RATROOT)/include/RAT
 
@@ -81,12 +87,12 @@ endif
 
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CPP) $(OBJECTS) -o $@ $< -L./  $(LIBS)
-
+#	$(CPP) $(OBJECTS) -o $@ $< -L./  $(LIBS) # works on Linux g++
+	$(CPP) $(OBJECTS) -o $@ -L./ $(LIBS) # for working with clang
 
 
 .cc.o:
-		$(CPP) $(OBJECTS)  $< -o $@
+	$(CPP) $(OBJECTS)  $< -o $@
 
 #anavac: test_code.o read_waveform.o create_hist.o
 #	$(CPP) -o $@ $< -L./  $(LIBS)
@@ -122,7 +128,7 @@ $(EXECUTABLE): $(OBJECTS)
 #SaveFile.o: SaveFile.cc functions.hh
 #	$(CXX) $(CXXFLAGS) -c $<
 
-%.o: %.cc functions.hh
+%.o: %.cc %.hh
 	$(CXX) $(CXXFLAGS) -c $<
 
 .PHONY : clean show

@@ -10,7 +10,7 @@
 #include <TH2F.h>
 #include <TCut.h>
 #include <TCutG.h>
-#include "functions.hh"
+#include "alpha_cut_results.hh"
 using namespace RAT::DS;
 using namespace std;
 

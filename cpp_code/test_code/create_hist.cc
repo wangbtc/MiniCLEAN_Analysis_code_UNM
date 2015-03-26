@@ -29,11 +29,11 @@
 #include <RAT/DS/Pulse.hh>
 #include <RAT/DetectorConfig.hh>
 #include <RAT/DS/Root.hh>
-#include <functions.hh>
+#include <create_hist.hh>
 using namespace RAT::DS;
 using namespace std;
 
-TH2D* Create2DHist(string h2name,string Xname,string Yname, int Xbins, int Xbin_min, int Xbin_max,int Ybins, int Ybin_min, int Ybin_max){
+TH2D* Create2DHist(string h2name,string Xname,string Yname, double Xbins, double Xbin_min, double Xbin_max,double Ybins, double Ybin_min, double Ybin_max){
   TH2D* h = new TH2D(h2name.c_str(),("#font[132]{" + h2name + "}").c_str(),Xbins,Xbin_min,Xbin_max,Ybins,Ybin_min,Ybin_max);
   h->SetXTitle(("#font[132]{" + Xname + "}").c_str());
   h->SetYTitle(("#font[132]{" + Yname + "}").c_str());
@@ -43,7 +43,7 @@ TH2D* Create2DHist(string h2name,string Xname,string Yname, int Xbins, int Xbin_
 
 }
 
-TH1D* Create1DHist(string h1name,string Xname,string Yname, int Xbins, int Xbin_min, int Xbin_max,int color){
+TH1D* Create1DHist(string h1name,string Xname,string Yname, double Xbins, double Xbin_min, double Xbin_max,int color){
   TH1D* h = new TH1D(h1name.c_str(),("#font[132]{" + h1name + "}").c_str(),Xbins,Xbin_min,Xbin_max);
   h->SetXTitle(("#font[132]{" + Xname + "}").c_str());
   h->SetYTitle(("#font[132]{" + Yname + "}").c_str());
@@ -54,7 +54,7 @@ TH1D* Create1DHist(string h1name,string Xname,string Yname, int Xbins, int Xbin_
   return h;
 
 }
-TH1D* CreateSumw2Hist(string hname,string Xname,string Yname, int Xbins, int Xbin_min, int Xbin_max,int color){
+TH1D* CreateSumw2Hist(string hname,string Xname,string Yname, double Xbins, double Xbin_min, double Xbin_max,int color){
   TH1D* h = new TH1D(hname.c_str(),("#font[132]{" + hname + "}").c_str(),Xbins,Xbin_min,Xbin_max);
   h->SetXTitle(("#font[132]{" + Xname + "}").c_str());
   h->SetYTitle(("#font[132]{" + Yname + "}").c_str());

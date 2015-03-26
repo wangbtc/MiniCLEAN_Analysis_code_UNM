@@ -29,10 +29,17 @@
 #include <RAT/DS/Pulse.hh>
 #include <RAT/DetectorConfig.hh>
 #include <RAT/DS/Root.hh>
-#include "functions.hh"
+#include "plot_waveform_mod.hh"
+#include "create_hist.hh"
+#include "alpha_cut.hh"
+#include "alpha_cut_results.hh"
+#include "a_pulse_info.hh"
+#include "read_waveform.hh"
+
 vector<TH1D*> hwavesum;
 TH1D* waveform;
 TH1D* projection_x;
+
 
 /*
 usage : ./ana run_type run subrun special_events
@@ -72,14 +79,25 @@ int main(int argc, char *arg[]){
     special_event_analysis = true;
   }
   //////////////////////////////////////////////////////////////////////////////
-  char rootfilename[20];
-  sprintf(rootfilename,"waveform_test_%d.root",run);
-  TString dirname = TString("/data2/cryopit_data/");
+  char rootfilename[30];
+  sprintf(rootfilename,"waveform_test_%d_sub_%d.root",run,subrun_range);
+  TString dirname = TString("/Users/wangbtc/Google Drive/cryopitdata/data_root_file/");
+  //TString dirname = TString("/data1/miniclean/");
 
   RAT::DetectorConfig* dc = RAT::DetectorConfig::GetDetectorConfig("MiniCLEAN", "MiniCLEAN/MiniCLEAN.geo",502);
   double delta_time =0;
+  double pulse_inj_time = 0 ;
+  double event_time = 0;
+  double max_q =0 ;
+  double max_q_41 = 0 ;
+  double max_pmt;
+  double max_ptime = 0;
+  double max_ptime_41 = 0;
+  double time_diff_inj = 0;
+  bool pulse_inj_event = false ;
   double flag_time =0 ;
   double flag_time2 =0 ;
+  int inj_count = 0 ;
   //Create bunch of histohram to store information
   TH2D* fp_q = Create2DHist("fprompt_charge_total"," fprompt","Charge",100,0,1,2000,0,500);
   TH2D* fp_r = Create2DHist("fprompt_centroid_total"," fprompt","(R/R_{tpb})^{3}",100,0,1,100,0,1);
@@ -106,9 +124,25 @@ int main(int argc, char *arg[]){
   TH2D* pulseTime_q = Create2DHist("Pulse_time Q"," Time (ns) ","Charge (PE)",tbins,tmin,tmax,1000,0,200);
   TH2D* pulseTime_q_41 = Create2DHist("Pulse_time Q for PMT 41"," Time (ns) ","Charge (PE)",tbins,tmin,tmax,1000,0,200);
   TH1D* pmt_count = Create1DHist("pmt_count"," PMT Channel "," Nomalized Count ",92,0,92,1);
-  TH1D* time_h = Create1DHist("Time difference between two consecutive events"," dt (10 ms) "," counts ",2000,-10,1990,1);
+  TH1D* time_h = Create1DHist("Time difference between two consecutive events"," dt ( us) "," counts ",2000,-10,1990,1);
 
+  TH2D* qmax_ptime_41 = Create2DHist("max_charge_pulse_time_41"," Time","Charge",tbins,tmin,tmax,1000,0,200);
+  //TH2D* qmax_ipmt_41 = Create2DHist("fprompt_centroid_equal_41"," fprompt","(R/R_{tpb})^{3}",100,0,1,100,0,1);
+  //TH2D* q_r_equal_41 = Create2DHist("charge_centroid_equal_41","charge","(R/R_{tpb})^{3}",2000,0,500,100,0,1);
+
+
+  TH2D* qmax_ptime = Create2DHist("max_charge_pulse_time"," Time","Charge",tbins,tmin,tmax,1000,0,200);
+  TH2D* qmax_ipmt = Create2DHist("qmax_pmt"," pmt","charge",92,0,92,1000,0,200);
+  //TH2D* q_r_equal_41 = Create2DHist("charge_centroid_equal_41","charge","(R/R_{tpb})^{3}",2000,0,500,100,0,1);
+
+  TH2D* qmax_charge = Create2DHist("max_charge_charge_event","Chare of event","charge of max pulse",1000,0,200,1000,0,200);
+  TH2D* qmax_charge_41 = Create2DHist("max_charge_charge_event_41","Chare of event","charge of max pulse",1000,0,200,1000,0,200);
+
+  TH1D* event_inj_diff = Create1DHist("Time diff between selected events and pulse_inj"," dt (us)","counts",8000,0,2000,1);
+  event_inj_diff->SetBit(TH1::kCanRebin);
+  //TH1D* trigger_log = Create1DHist("Trigger Pattern","trigger bit","counts",8,0,8,1);
   projection_x = Create1DHist("Projection from 2D Hist","Fprompt","counts",100,0,1,1);
+  //TH2D* TriggerPattern = Create2DHist("TriggerPattern","Trigger Bit","counts",8,0,8,10000,0,100000);
   //
   int total_count = 0;
   double zeroBin ;
@@ -120,6 +154,10 @@ int main(int argc, char *arg[]){
   bool initHist = false ;
   bool ESR;
   bool ESR_41;
+  double run_start = 0;
+  double run_end = 0 ;
+  double t = 0 ;
+  TTimeStamp utctime;
 
   // Initializing Histogram for waveform
 
@@ -143,7 +181,7 @@ int main(int argc, char *arg[]){
   // Runing through every subrun specified in the code for each Run
   for (int subrun = 0; subrun < subrun_range ; subrun++){
     //Chain each subrun together
-    sprintf(sub,"Run_%06u/cal/MCL_%06u_%06u.root",run,run,subrun);
+    sprintf(sub,"MCL_%06u_%06u.root",run,subrun);
     //sprintf(sub,"MCL_%06u_%06u.root",run,subrun);
     TString readfilename = dirname + sub ;
 
@@ -158,6 +196,7 @@ int main(int argc, char *arg[]){
 
 
     total_count += ev_count;
+    pulse_inj_event = false ;
     //event loop
     for (int ie=0 ; ie < ev_count ; ie++){
       if (ie%1000==0){cout<<" Finished "<<ie<<" events ! "<<endl;}
@@ -188,9 +227,60 @@ int main(int argc, char *arg[]){
       double rc = ev->GetCentroid()->GetPosition().Mag();
       double w=pow(rc/435,3.0);//normalized radius against TPB radius
 
+      if (ie==0){
+        if ((ie == 0) &&(subrun == 0) ){
+          run_start = ev->GetUTC().GetSec();
+        }
+
+        utctime = ev->GetUTC();
+        cout<<" The oringinal time is "<<utctime.AsString("c")<<endl;
+      }
+      if ((ie== ev_count - 1) && (subrun == subrun_range-1 )){
+        run_end = ev->GetUTC().GetSec() ;
+        t = run_end - run_start ;
+
+        utctime = ev->GetUTC();
+        cout<<" The oringinal time is "<<utctime.AsString("c")<<endl;
+        cout<<" The total runtime is "<<t<<endl;
+        cout<<" inj rate for run"<<run<<" is "<<(float)inj_count/t<<endl;
+      }
+
+      //for (int it =0;it<8;it++){
+      //  TriggerPattern->Fill(it,ev->GetTriggerCount(it));
+      //}
+      /*
+      if (ev->GetTriggerCount(4) > 0){
+        cout<<" Before the cut "<<endl;
+        cout<<" Trigger count for NHIT: "<<ev->GetTriggerCount(1)<<endl;
+        cout<<" Trigger count for PINJ: "<<trigger_type<<endl;
+        cout<<" Trigger count for PERI: "<<ev->GetTriggerCount(7)<<endl;
+        cout<<" Trigger count for generic: "<<ev->GetTriggerCount()<<endl;
+        cout<<" GetTriggerOverlapType "<<ev->GetTriggerOverlapType()<<endl;
+      }
+
+      trigger_log->Fill(trigger_type);*/
+      delta_time += timing ;
+      if (ev->GetTriggerCount(4) > 0){
+        pulse_inj_time = 0;
+        pulse_inj_time = delta_time ;
+        pulse_inj_event = true ;
+        inj_count++;
+        //cout<<" For INJ event id "<<ev->GetEventID()<<endl;
+        //cout<<" This is pulse injection event !"<<trigger_type<<endl;
+      }
+
       // For vacuum data we want NHit trigger
-      if (trigger_type != T_type) continue;
+
       if (!ev->GetPassAllCuts()) continue;
+      /*if (ev->GetTriggerCount(4) > 0){
+        cout<<" After the cut "<<endl;
+        cout<<" Trigger count for NHIT: "<<ev->GetTriggerCount(1)<<endl;
+        cout<<" Trigger count for PINJ: "<<trigger_type<<endl;
+        cout<<" Trigger count for PERI: "<<ev->GetTriggerCount(7)<<endl;
+        cout<<" Trigger count for generic: "<<ev->GetTriggerCount()<<endl;
+        cout<<" GetTriggerOverlapType "<<ev->GetTriggerOverlapType()<<endl;
+      }*/
+      if (trigger_type != T_type) continue;
       //Fill up 2-D histogram for basic information of the event
       fp_q->Fill(fprompt,charge);
       fp_r->Fill(fprompt,w);
@@ -201,7 +291,12 @@ int main(int argc, char *arg[]){
       condition = 100;
       ESR = false ;
       ESR_41 = false ;
-      delta_time += timing ;
+      max_q = 5 ;
+      max_pmt = 100 ;
+      max_ptime = -1100.0 ;
+      max_q_41 = 5 ;
+      max_ptime_41 = -1100.0;
+
       if ((fprompt>0.9) && (fprompt<0.98)) {
         condition =0; //Chorenkov light events
         cos_phi_chorenkov->Fill(phi,costheta);
@@ -210,6 +305,11 @@ int main(int argc, char *arg[]){
       if ((fprompt>0.37) && (fprompt<0.42) && (charge >100)&& (w<0.98) && (w>0.6)) {
         condition = 1 ; //alpha events
         cos_phi_alpha->Fill(phi,costheta);
+      }
+      if ((fprompt>0) && (fprompt<0.4) && (charge < 5)){
+        cout<<" Events  with ev id "<<ev->GetEventID()<<endl;
+        cout<<" With Fprompt "<<fprompt<<" Charge "<<"Total Charge"<<charge<<endl;
+        cout<<" reconstruct centorid radius "<<w<<endl;
       }
       //calculate the diferential time between two consecutive events
       if ((first_hit) &&(second_hit)){
@@ -236,11 +336,13 @@ int main(int argc, char *arg[]){
         double sampletime = dc->GetChannelSamplingTime(chID);
         if (special_event_analysis){
           if ((pmt_q > 0.8*charge) && (ipmt!=41)) {
+
             ESR = true ;
             pmt_count->Fill((float) ipmt);
 
           }
           if ((pmt_q > 0.8*charge) && (ipmt==41)) {
+
             ESR_41 = true ;
             pmt_count->Fill((float) ipmt);
           }
@@ -261,10 +363,10 @@ int main(int argc, char *arg[]){
         }//Special event selector
         else{
           if (ipmt==41){
-            pulse_info(pmt,pulseTime_q_41);
+            pulse_info(pmt,pulseTime_q_41,-1000,16000);
           }
           else {
-            pulse_info(pmt,pulseTime_q);
+            pulse_info(pmt,pulseTime_q,-1000,16000);
           }
           read_waveform(pmt,trig,sampletime,waveform);
 
@@ -277,7 +379,12 @@ int main(int argc, char *arg[]){
       if (special_event_analysis){
         if (ESR){
           //
-
+          event_time = delta_time ;
+          if (pulse_inj_event){
+            time_diff_inj = event_time - pulse_inj_time ;
+            event_inj_diff->Fill(time_diff_inj*1e-6);
+            //cout<<" Time after last Pulse inj events "<<event_time-pulse_inj_time<<" For event id "<<ev->GetEventID()<<endl;
+          }
           if (first_hit){
                 flag_time2 = delta_time;
                 second_hit = true ;
@@ -303,9 +410,30 @@ int main(int argc, char *arg[]){
             double sampletime = dc->GetChannelSamplingTime(chID);
             read_waveform(pmt,trig,sampletime,hwavesum[2]);
 
+            for (unsigned ipulse = 0; ipulse<pmt->GetPulseCount(); ipulse++){
+              Pulse* pulse = pmt->GetPulse(ipulse);
+              double ptime = pulse->GetTime();
+              double p_charge = pulse->GetCharge();
+              if (p_charge > max_q ){
+                max_q = p_charge ;
+                max_pmt = ipmt ;
+                max_ptime = ptime ;
+              }
+            }//pulse loop
+
           }//second pmt loop
+
+          qmax_ptime->Fill(max_ptime,max_q);
+          qmax_ipmt->Fill(max_pmt,max_q);
+          qmax_charge->Fill(charge,max_q);
         }// if ESR statment
         if (ESR_41){
+          event_time = delta_time ;
+          if (pulse_inj_event){
+            time_diff_inj = event_time - pulse_inj_time ;
+            event_inj_diff->Fill(time_diff_inj*1e-6);
+            //cout<<" Time after last Pulse inj events "<<event_time-pulse_inj_time<<" For event id "<<ev->GetEventID()<<endl;
+          }
           fp_q_equal_41->Fill(fprompt,charge);
           fp_r_equal_41->Fill(fprompt,w);
           q_r_equal_41->Fill(charge,w);
@@ -317,7 +445,21 @@ int main(int argc, char *arg[]){
             double sampletime = dc->GetChannelSamplingTime(chID);
             read_waveform(pmt,trig,sampletime,hwavesum[3]);
 
+            for (unsigned ipulse = 0; ipulse<pmt->GetPulseCount(); ipulse++){
+              Pulse* pulse = pmt->GetPulse(ipulse);
+              double ptime = pulse->GetTime();
+              double p_charge = pulse->GetCharge();
+              if (p_charge > max_q_41 ){
+                max_q_41 = p_charge ;
+                //max_pmt_41 = ipmt ;
+                max_ptime_41 = ptime ;
+              }
+            }//pulse loop
+
+
           }//second pmt loop
+          qmax_ptime_41->Fill(max_ptime_41,max_q_41);
+          qmax_charge_41->Fill(charge,max_q_41);
         }// if ESR_41 statment
 
         if ((!ESR) && (!ESR_41)){
@@ -336,6 +478,8 @@ int main(int argc, char *arg[]){
           }//second pmt loop
         }// if !ESR and !ESR_41 statment
       }// if special_event selector
+
+
 
 
     }// event loop
@@ -386,8 +530,19 @@ int main(int argc, char *arg[]){
     pmt_count->Write();
     time_h->Write();
 
+    //trigger_log->Write();
     c->Write();
     projection_x->Write();
+    event_inj_diff->Write();
+    //TriggerPattern->Write();
+
+    qmax_ptime->Write();
+    qmax_ipmt->Write();
+
+    qmax_ptime_41->Write();
+
+    qmax_charge->Write();
+    qmax_charge_41->Write();
   }
   else{
     NormalizedSum(waveform);
@@ -409,6 +564,6 @@ int main(int argc, char *arg[]){
 
 
   f->Close();
-  
+
   return 0;
 }
